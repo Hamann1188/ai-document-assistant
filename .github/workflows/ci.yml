@@ -32,4 +32,8 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run pytest
+      - name: pytest
+        shell: bash  # -eo pipefail, so a failing pytest still fails the step
+        run: |
+          uv run pytest -rs | tee pytest.log
+          echo "::notice title=pytest::$(tail -n 1 pytest.log)"
