@@ -1,0 +1,94 @@
+"""Integration tests against a real PostgreSQL + pgvector database.
+
+They run only when DOCASSIST_TEST_DATABASE_URL is set; the database is created if
+missing, migrated to head, and emptied before each test.
+"""
+
+import asyncio
+import os
+from pathlib import Path
+
+import asyncpg
+import pytest
+from alembic import command
+from alembic.config import Config
+from fastapi.testclient import TestClient
+from sqlalchemy import text
+from sqlalchemy.engine import make_url
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from docassist.api.main import create_app
+from docassist.config import Settings
+from docassist.db.models import EMBEDDING_DIM
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+async def _ensure_database(url: str) -> None:
+    parsed = make_url(url)
+    conn = await asyncpg.connect(
+        user=parsed.username,
+        password=parsed.password,
+        host=parsed.host,
+        port=parsed.port,
+        database="postgres",
+    )
+    try:
+        if not await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", parsed.database):
+            await conn.execute(f'CREATE DATABASE "{parsed.database}"')
+    finally:
+        await conn.close()
+
+
+def run_sql(url: str, sql: str, **params) -> list:
+    async def run() -> list:
+        engine = create_async_engine(url)
+        try:
+            async with engine.begin() as conn:
+                result = await conn.execute(text(sql), params)
+                return result.all() if result.returns_rows else []
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(run())
+
+
+@pytest.fixture(scope="session")
+def database_url() -> str:
+    url = os.environ.get("DOCASSIST_TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("set DOCASSIST_TEST_DATABASE_URL to run integration tests")
+    asyncio.run(_ensure_database(url))
+    config = Config(str(ROOT / "alembic.ini"))
+    config.attributes["database_url"] = url
+    config.attributes["configure_logger"] = False
+    command.upgrade(config, "head")
+    return url
+
+
+@pytest.fixture(autouse=True)
+def empty_database(database_url):
+    run_sql(database_url, "TRUNCATE documents CASCADE")
+
+
+@pytest.fixture
+def sql(database_url):
+    """Run a statement in its own transaction and return the rows."""
+    return lambda statement, **params: run_sql(database_url, statement, **params)
+
+
+@pytest.fixture
+def settings(database_url, tmp_path) -> Settings:
+    return Settings(_env_file=None, database_url=database_url, upload_dir=tmp_path / "uploads")
+
+
+@pytest.fixture
+def embedder(fake_embedder_cls):
+    return fake_embedder_cls(EMBEDDING_DIM)
+
+
+@pytest.fixture
+def client(settings, embedder):
+    app = create_app(settings, embedder_factory=lambda _: embedder)
+    with TestClient(app) as client:
+        yield client

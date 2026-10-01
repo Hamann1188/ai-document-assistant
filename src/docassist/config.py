@@ -1,7 +1,12 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# The database column has a fixed dimension, so the model is part of the schema.
+# Changing it needs a migration and re-ingestion (see docs/ARCHITECTURE.md, ADR-3).
+EMBEDDING_MODEL = "google/embeddinggemma-300m"
 
 
 class Settings(BaseSettings):
@@ -18,6 +23,18 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://docassist:docassist@localhost:5432/docassist"
     db_connect_timeout_s: float = 5.0
+
+    upload_dir: Path = Path("uploads")
+    max_upload_mb: int = 20
+    max_pages: int = 300
+    chunk_max_words: int = 120
+    chunk_overlap_words: int = 20
+    # Development: models download into this cache (None: fastembed's default).
+    embedding_cache_dir: Path | None = None
+    # Docker: a plain directory with the model files, baked into the image.
+    embedding_model_path: Path | None = None
+    # Load the model at startup: a broken model stops the app instead of failing uploads.
+    embedding_warmup: bool = False
 
 
 @lru_cache

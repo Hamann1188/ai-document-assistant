@@ -1,4 +1,24 @@
-from docassist.config import Settings
+import re
+from pathlib import Path
+
+from docassist.config import EMBEDDING_MODEL, Settings
+from docassist.db.models import EMBEDDING_DIM
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_dockerfile_bakes_the_configured_embedding_model():
+    dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert re.search(r"^ARG EMBEDDING_MODEL=(\S+)$", dockerfile, re.M)[1] == EMBEDDING_MODEL
+
+
+def test_latest_migration_matches_embedding_dimension():
+    dims = [
+        int(dim)
+        for path in sorted((ROOT / "alembic" / "versions").glob("*.py"))
+        for dim in re.findall(r"^EMBEDDING_DIM = (\d+)$", path.read_text(encoding="utf-8"), re.M)
+    ]
+    assert dims[-1] == EMBEDDING_DIM
 
 
 def test_defaults_point_at_public_api_and_opus(monkeypatch):

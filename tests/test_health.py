@@ -25,7 +25,7 @@ def _settings(**overrides) -> Settings:
 
 
 def test_healthz_ok_when_database_answers():
-    app = create_app(_settings(), engine_factory=lambda _: _FakeEngine())
+    app = create_app(_settings(), engine_factory=lambda _: _FakeEngine(), recover_interrupted=False)
     with TestClient(app) as client:
         response = client.get("/healthz")
     assert response.status_code == 200

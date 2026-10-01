@@ -25,6 +25,8 @@ services:
       DOCASSIST_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-docassist}:${POSTGRES_PASSWORD:-docassist}@db:5432/${POSTGRES_DB:-docassist}
     ports:
       - "127.0.0.1:8000:8000"
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -32,3 +34,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

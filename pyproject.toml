@@ -5,10 +5,14 @@ description = "Chat with your PDFs: answers with file and page citations, powere
 license = "MIT"
 requires-python = ">=3.13"
 dependencies = [
+    "alembic>=1.14",
     "asyncpg>=0.30",
     "fastapi>=0.115",
+    "fastembed>=0.5",
+    "pgvector>=0.3",
     "pydantic-settings>=2.6",
     "pypdf>=6.0",
+    "python-multipart>=0.0.18",
     "sqlalchemy[asyncio]>=2.0.36",
     "uvicorn[standard]>=0.30",
 ]
@@ -26,6 +30,10 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "ASYNC", "RUF"]
+
+[tool.ruff.lint.isort]
+# The alembic/ migrations folder would otherwise make the library look first-party.
+known-third-party = ["alembic"]
 
 [tool.ruff.lint.per-file-ignores]
 # Russian document text: Cyrillic letters are intended, not Latin look-alikes

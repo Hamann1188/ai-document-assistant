@@ -19,6 +19,7 @@ htmlcov/
 
 # Runtime data
 uploads/
+.cache/
 evals/results/*.jsonl
 
 # Editors and OS

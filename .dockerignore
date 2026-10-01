@@ -11,3 +11,5 @@ tests
 evals
 docs
 uploads
+.cache
+sample_docs
