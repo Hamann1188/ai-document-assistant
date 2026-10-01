@@ -75,9 +75,15 @@ Failure handling:
 
 ## 6. Retrieval
 
-- **Vector:** embed the query in the model's query format (`task: search result | query: {q}`) and take the top 20 by cosine distance.
-- **Full-text:** `websearch_to_tsquery('simple', q)` and take the top 20 by `ts_rank`.
-- **Fusion:** Reciprocal Rank Fusion (k = 60). Keep the top 8; when two chunks from the same page both make it, keep the higher-ranked one (they overlap).
+- **Semantic ranking:** embed the query in the model's query format (`task: search result | query: {q}`) and take the top 20 by cosine distance (HNSW).
+- **Exact-identifier boost (ADR-9):** the query's identifiers are:
+  - codes with digits: `4.2`, `07/2026`, `A-12`, `N95`;
+  - all-caps abbreviations: `ОПТГ`, `VAT`.
+
+  Plain numbers ("20 minutes") don't count. Chunks containing every identifier as a whole lexeme (GIN on `tsv`) move to the top, in semantic order. An identifier matching more than 4 chunks isn't selective and is ignored.
+- **Result:** the top 8 chunks. Overlapping chunks of the same page are all kept.
+- `GET /search?q=&k=&mode=hybrid|vector|text` shows exactly what the assistant would use as sources. `text` is plain full-text search: an OR query without stopwords, with prefix matching for long words. It is kept for comparison and debugging.
+- Retrieval quality is measured by `evals/retrieval.py` against the real database and model. Results are in `evals/results/retrieval.md`.
 - There is no hard relevance cut-off. Claude decides "not found" from the sources; the best score is only logged.
 
 ## 7. Claude request (answer route)
@@ -147,6 +153,7 @@ The runner writes `evals/results/latest.md`; the summary table goes into the REA
 | ADR-5 | pypdf (BSD) instead of PyMuPDF (AGPL) | Licence-safe for client code. Trade-off: weaker layout handling |
 | ADR-6 | Vanilla JS UI instead of React | No build step; the demo is about the backend |
 | ADR-8 | Chunks never cross page boundaries (120 words, ~20-word overlap) instead of ~350-word chunks spanning pages | Every chunk has exactly one page, so citations point to one page. Smaller chunks also rank more precisely, and 8 of them still cost under 1.5k input tokens. Trade-off: a sentence broken across a page break is split in two |
+| ADR-9 | Semantic ranking with an exact-identifier boost instead of Reciprocal Rank Fusion of vector and full-text results | Measured on 25 questions, MRR: RRF (k = 60) 0.83; weighted RRF up to 0.86 (text weight 0.3–0.5, depth 5); vector only 0.94; vector + boost 0.94. With k = 60, adjacent vector ranks differ by about 0.0003, so any full-text contribution reorders results. Cross-lingual questions then lose to chunks that only share words like "price". The boost keeps the semantic order and guarantees the case embeddings handle worst: exact references. Trade-off: no keyword help for terms that are neither codes nor abbreviations |
 | ADR-7 | Server-side refusal fallback (`fallbacks: "default"`, beta header `server-side-fallback-2026-07-01`) on, behind a setting | Requests are single-turn, so a fallback has no history side effects. Trade-off: a beta dependency, which the setting turns off |
 
 ## 12. Extensions (offer as add-ons)

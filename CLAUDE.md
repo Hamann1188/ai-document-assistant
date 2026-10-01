@@ -36,6 +36,7 @@ tests/
 | Lint / format | `uv run ruff check .` · `uv run ruff format .` |
 | Tests (unit) | `uv run pytest` (integration tests are skipped without a database) |
 | Tests (+ integration) | `$env:DOCASSIST_TEST_DATABASE_URL = "postgresql+asyncpg://docassist:docassist@localhost:5432/docassist_test"; uv run pytest`. Needs the compose `db` running; `docassist_test` is created and truncated automatically |
+| Retrieval eval | `uv run python -m evals.retrieval`: real DB and model, no API key; ingests missing sample docs; exits 1 below the target |
 | Embedding benchmark | `uv run python -m evals.embedding_benchmark [model ...]` (downloads models into `.cache/`, no API key) |
 | Eval (real API, costs money) | `uv run python -m evals.run` |
 
@@ -83,7 +84,7 @@ Each step is one commit; tick it off in Status.
 - [x] 1 Scaffold (2026-10-01): `/healthz` returns 200 via compose and 503 with the db stopped; 4 tests pass
 - [x] 2 Sample corpus (2026-10-01): 4 PDFs (16 pages); 28 eval items (23 in scope including 6 cross-lingual, 4 out of scope, 1 injection); evidence quotes checked by tests
 - [x] 3 Ingestion (2026-10-01): upload/list/get/delete API, page-bound chunking, embeddinggemma-300m chosen by benchmark (ADR-3), migration 0001. 70 tests (7 integration on Postgres). In Docker the 4 sample PDFs ingest in 4 s → 22 chunks
-- [ ] 4 Retrieval
+- [x] 4 Retrieval (2026-10-01): semantic ranking + exact-identifier boost (ADR-9; RRF measured worse); `GET /search`. Retrieval eval: R@1 0.92, R@8 1.00, MRR 0.94 over 25 questions. Only miss: `xl-uz-saturday-hours` at rank 6, an Uzbek-to-English embedding weakness
 - [ ] 5 Answering
 - [ ] 6 Web UI
 - [ ] 7 Evals

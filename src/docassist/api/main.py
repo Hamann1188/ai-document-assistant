@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from docassist.api import documents, health
+from docassist.api import documents, health, search
 from docassist.config import EMBEDDING_MODEL, Settings, get_settings
 from docassist.db.models import EMBEDDING_DIM
 from docassist.db.session import create_engine, create_session_factory
@@ -65,6 +65,7 @@ def create_app(
     app.state.settings = settings
     app.include_router(health.router)
     app.include_router(documents.router)
+    app.include_router(search.router)
     return app
 
 

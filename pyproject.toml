@@ -30,14 +30,12 @@ target-version = "py313"
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "ASYNC", "RUF"]
+# Multilingual project: Cyrillic in strings is intended, not a Latin look-alike
+ignore = ["RUF001"]
 
 [tool.ruff.lint.isort]
 # The alembic/ migrations folder would otherwise make the library look first-party.
 known-third-party = ["alembic"]
-
-[tool.ruff.lint.per-file-ignores]
-# Russian document text: Cyrillic letters are intended, not Latin look-alikes
-"scripts/make_sample_docs.py" = ["RUF001"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

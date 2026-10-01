@@ -259,6 +259,28 @@
         - "Either party may terminate this agreement with 60 days' written notice."
         - "misses delivery deadlines three times in one calendar quarter"
 
+# --- Exact terms: abbreviations and clause numbers (full-text search helps here) ----
+
+- id: keyword-optg
+  kind: in_scope
+  lang: ru
+  question: "Сколько стоит ОПТГ?"
+  answer: "Панорамный снимок (ОПТГ) - 120 000 сум."
+  evidence:
+    - file: price-list-ru.pdf
+      page: 1
+      quotes: ["Панорамный снимок (ОПТГ) 120 000"]
+
+- id: keyword-clause-4-2
+  kind: in_scope
+  lang: en
+  question: "What does clause 4.2 of the supply agreement say?"
+  answer: "Goods with hidden defects may be returned within 30 days of delivery; the supplier replaces them or refunds the price within 10 business days."
+  evidence:
+    - file: supplier-agreement.pdf
+      page: 2
+      quotes: ["4.2. Goods with hidden defects may be returned within 30 days of delivery."]
+
 # --- Out of scope: the documents don't answer these ----------------------------------
 
 - id: oos-braces
