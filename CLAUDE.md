@@ -8,6 +8,9 @@ The target architecture is in `docs/ARCHITECTURE.md`. Read it before changing st
 
 Python 3.13 (uv), FastAPI, SQLAlchemy 2 (async) + asyncpg, Alembic, PostgreSQL 17 + pgvector, pypdf, fastembed (local ONNX embeddings), `anthropic` SDK, vanilla HTML/JS UI, pytest, ruff, Docker Compose.
 
+- The app is built by `create_app(settings, engine_factory)` in `api/main.py`; tests inject a fake engine instead of a database.
+- The test client uses `httpx2`, because Starlette deprecated `httpx` for `TestClient`.
+
 ## Layout
 
 ```
@@ -58,7 +61,7 @@ Each step is one commit; tick it off in Status.
 ## Status
 
 - [x] Target architecture and CLAUDE.md (2026-10-01)
-- [ ] 1 Scaffold
+- [x] 1 Scaffold (2026-10-01): `/healthz` returns 200 via compose and 503 with the db stopped; 4 tests pass
 - [ ] 2 Sample corpus
 - [ ] 3 Ingestion
 - [ ] 4 Retrieval

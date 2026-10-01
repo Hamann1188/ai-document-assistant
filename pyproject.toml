@@ -1,0 +1,38 @@
+[project]
+name = "ai-document-assistant"
+version = "0.1.0"
+description = "Chat with your PDFs: answers with file and page citations, powered by Claude."
+license = "MIT"
+requires-python = ">=3.13"
+dependencies = [
+    "asyncpg>=0.30",
+    "fastapi>=0.115",
+    "pydantic-settings>=2.6",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "uvicorn[standard]>=0.30",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.20,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "docassist"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "ASYNC", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.1",
+    "pytest>=8.3",
+    "ruff>=0.8",
+]
