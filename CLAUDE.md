@@ -44,6 +44,11 @@ tests/
 - Document text is untrusted: never put it in the system prompt.
 - Unit tests mock the Anthropic client and the embedder; only `evals/` calls the real API.
 - Reject scanned PDFs without a text layer with a clear message (OCR is out of scope).
+- Sample corpus:
+  - Edit content only in `scripts/make_sample_docs.py`, then regenerate. Output is deterministic (reportlab invariant mode), and the script fails if a page's content overflows onto a new page.
+  - `tests/test_sample_corpus.py` checks that every evidence quote in `evals/questions.yaml` is still on its cited page.
+  - Use only ASCII bullets and dashes in generated PDFs: pypdf extracts the DejaVu "•" as `\x7f`.
+  - Cyrillic text needs the bundled DejaVu Sans in `scripts/fonts/` (Bitstream Vera licence, included).
 
 ## Build plan
 
@@ -62,7 +67,7 @@ Each step is one commit; tick it off in Status.
 
 - [x] Target architecture and CLAUDE.md (2026-10-01)
 - [x] 1 Scaffold (2026-10-01): `/healthz` returns 200 via compose and 503 with the db stopped; 4 tests pass
-- [ ] 2 Sample corpus
+- [x] 2 Sample corpus (2026-10-01): 4 PDFs (16 pages); 28 eval items (23 in scope including 6 cross-lingual, 4 out of scope, 1 injection); evidence quotes checked by tests
 - [ ] 3 Ingestion
 - [ ] 4 Retrieval
 - [ ] 5 Answering
