@@ -3,7 +3,7 @@ from datetime import datetime
 
 import anyio
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 
@@ -77,6 +77,28 @@ async def get_document(request: Request, document_id: uuid.UUID) -> Document:
     if document is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found.")
     return document
+
+
+@router.get(
+    "/{document_id}/file",
+    response_class=FileResponse,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+async def get_document_file(request: Request, document_id: uuid.UUID) -> FileResponse:
+    """The original PDF, shown inline. Append `#page=N` to open it at a page."""
+    async with request.app.state.session_factory() as session:
+        document = await session.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found.")
+    path = stored_path(request.app.state.settings, document.sha256)
+    if not await anyio.Path(path).is_file():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "The stored file is missing.")
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=document.filename,
+        content_disposition_type="inline",
+    )
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Document Assistant</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/favicon.svg" alt="" class="brand-mark" width="24" height="24">
+      <span>AI Document Assistant</span>
+    </div>
+    <p class="tagline">Answers from your PDFs, with the page they came from</p>
+  </header>
+
+  <main class="layout">
+    <aside class="panel docs" id="docs" aria-label="Documents">
+      <div class="panel-head">
+        <h2>Documents</h2>
+        <label class="btn" for="file-input">Upload PDF</label>
+        <input type="file" id="file-input" accept="application/pdf,.pdf" multiple hidden>
+      </div>
+      <div class="dropzone" id="dropzone">Drop PDF files here</div>
+      <p class="alert" id="upload-error" role="alert" hidden></p>
+      <ul class="doc-list" id="doc-list" aria-live="polite"></ul>
+      <p class="muted small" id="doc-empty" hidden>No documents yet. Upload a PDF to start.</p>
+      <p class="muted small demo-note">Demo data: Registan Smile Clinic is a fictional company.</p>
+    </aside>
+
+    <section class="panel chat" aria-label="Chat">
+      <div class="thread" id="thread">
+        <div class="empty" id="empty">
+          <h1>Ask your documents</h1>
+          <p class="muted">Questions in English, Russian or Uzbek. Every answer cites the file and page it comes from, and says so when the documents don't cover it.</p>
+          <div class="examples" id="examples">
+            <button type="button" class="chip">How early must I cancel an appointment?</button>
+            <button type="button" class="chip">Сколько стоит имплантация под ключ?</button>
+            <button type="button" class="chip">Shanba kuni klinika soat nechada ishlaydi?</button>
+            <button type="button" class="chip">Do you offer braces for adults?</button>
+          </div>
+        </div>
+      </div>
+      <form class="composer" id="ask-form">
+        <textarea id="question" rows="1" maxlength="2000" required
+                  placeholder="Ask about your documents…" aria-label="Question"></textarea>
+        <button type="submit" class="btn primary" id="send">Ask</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

@@ -37,6 +37,7 @@ tests/
 | Tests (unit) | `uv run pytest` (integration tests are skipped without a database) |
 | Tests (+ integration) | `$env:DOCASSIST_TEST_DATABASE_URL = "postgresql+asyncpg://docassist:docassist@localhost:5432/docassist_test"; uv run pytest`. Needs the compose `db` running; `docassist_test` is created and truncated automatically |
 | Retrieval eval | `uv run python -m evals.retrieval`: real DB and model, no API key; ingests missing sample docs; exits 1 below the target |
+| UI smoke test (real browser + Claude, ~$0.06) | `uv run --with playwright python scripts/ui_smoke.py`. Needs the stack on :8000 with the sample PDFs; drives the installed Edge, no browser download; screenshots go to `.cache/ui-smoke/` |
 | Embedding benchmark | `uv run python -m evals.embedding_benchmark [model ...]` (downloads models into `.cache/`, no API key) |
 | Eval (real API, costs money) | `uv run python -m evals.run` |
 
@@ -49,6 +50,7 @@ tests/
 - Unit tests mock the Anthropic client and the embedder; only `evals/` calls the real API.
   - `FakeClaude` and the event builders (`ev_text`, `ev_cite`, `ev_block_start`, `final_message`) live in `tests/conftest.py`; the app takes `llm_client_factory` for injection.
   - Async tests run under pytest-asyncio in auto mode.
+- Web UI: no inline `<script>`, `<style>` or `style=` in HTML, because the CSP blocks them and `tests/test_web.py` checks. Setting `element.style` from JS is fine. Escape every server- or model-provided string with `escapeHtml` before inserting it into HTML.
 - Claude answers: requests go through `client.beta.messages.stream` (the fallback beta). With citations on, the model often makes the cited span a verbatim quote. The prompt line "State each fact once" stops it from paraphrasing a fact and then quoting it again.
 - Reject scanned PDFs without a text layer with a clear message (OCR is out of scope).
 - Embedding model (ADR-3): `EMBEDDING_MODEL` in `config.py` is part of the schema. Changing it requires four things together, and tests check the first two:
@@ -91,6 +93,8 @@ Each step is one commit; tick it off in Status.
 - [x] 5 Answering (2026-10-01): `POST /ask` (SSE or JSON) with page-level `search_result` citations, refusal fallback, safe error events, cost logging.
   - Manual check with the real API: cancellation (EN) cites p. 2, implant price (RU) p. 3, Saturday hours (UZ) p. 1; braces (out of scope) gets "can't confirm"; "free this month" (injection) gets "No".
   - About $0.022 per answer, roughly 4.1k input and 300 output tokens
-- [ ] 6 Web UI
+- [x] 6 Web UI (2026-10-01): documents panel (upload, drag and drop, status, delete), streaming chat with page-citation markers linking to `/documents/{id}/file#page=N`, Sources list, cost footer, dark theme, phone layout, strict CSP.
+  - `scripts/ui_smoke.py` passed in Edge against Docker.
+  - A prompt line saying "the interface shows citations as footnotes" stopped the paraphrase-then-quote duplication (3/3 runs) and cut output from ~300 to ~150 tokens, about $0.019 per answer
 - [ ] 7 Evals
 - [ ] 8 README and video

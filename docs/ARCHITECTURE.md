@@ -115,6 +115,13 @@ Failure handling:
   - With `stream: false`, the same events are collected into one JSON object with `answer`, `blocks` and their citations.
   - On `stop_reason == "refusal"` the client shows a clear message. On `"max_tokens"`, the partial answer is shown with a notice.
 - **Logging:** each answer logs model, stop reason, source count, tokens and estimated cost. Question and answer text are never logged.
+- **Web UI** (`src/docassist/web/`, served at `/`): vanilla HTML, CSS and JS with no build step (ADR-6).
+  - Documents panel: upload by button or drag and drop, status polling while processing, delete. A ready document's name opens its PDF.
+  - Chat: reads the `/ask` event stream with `fetch` (EventSource can't POST). Text is HTML-escaped first, then a minimal Markdown renderer runs (paragraphs, lists, bold).
+  - Citations become numbered markers, one number per cited page. Each marker links to `/documents/{id}/file#page=N`, so the browser's PDF viewer opens at that page. A Sources list under the answer shows the quoted text.
+  - The answer footer shows model, tokens, cost and pages searched.
+  - Styling: light and dark themes via `prefers-color-scheme`; one column under 800 px.
+  - Security: a strict CSP (`default-src 'self'`, no inline script or style, checked by a test) on the UI and static files.
 - **Known limitation:** citation blocks are sentences. A table has no sentence punctuation, so a whole table chunk is one block, and its `cited_text` is the full table (for example the price list). The page is still exact. Fix later: keep line breaks in chunk text and split table-like units into rows.
 - No `output_config.format` on this route: citations and structured outputs are incompatible.
 - **Single-turn by design:** every question is independent, so there is no conversation state to keep consistent.

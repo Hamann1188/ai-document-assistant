@@ -97,6 +97,27 @@ def test_unexpected_error_marks_document_failed_without_leaking_details(
     assert not sql("SELECT 1 FROM chunks")
 
 
+def test_file_endpoint_serves_the_original_pdf_inline(client, settings):
+    original = (SAMPLE_DOCS / "price-list-ru.pdf").read_bytes()
+    document = upload(client, "price-list-ru.pdf").json()
+
+    response = client.get(f"/documents/{document['id']}/file")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.headers["content-disposition"].startswith("inline;")
+    assert 'filename="price-list-ru.pdf"' in response.headers["content-disposition"]
+    assert response.content == original
+
+    for stored in settings.upload_dir.glob("*.pdf"):
+        stored.unlink()
+    assert client.get(f"/documents/{document['id']}/file").status_code == 404
+
+
+def test_file_endpoint_404_for_unknown_document(client):
+    response = client.get("/documents/00000000-0000-0000-0000-000000000000/file")
+    assert response.status_code == 404
+
+
 def test_delete_removes_document_chunks_and_file(client, settings, sql):
     document = upload(client, "supplier-agreement.pdf").json()
     stored = list(settings.upload_dir.glob("*.pdf"))
