@@ -47,6 +47,9 @@ tests/
 - Retrieved chunks go to Claude as `search_result` blocks with citations enabled. Never paste chunk text into the prompt string. The answer route never uses `output_config.format`.
 - Document text is untrusted: never put it in the system prompt.
 - Unit tests mock the Anthropic client and the embedder; only `evals/` calls the real API.
+  - `FakeClaude` and the event builders (`ev_text`, `ev_cite`, `ev_block_start`, `final_message`) live in `tests/conftest.py`; the app takes `llm_client_factory` for injection.
+  - Async tests run under pytest-asyncio in auto mode.
+- Claude answers: requests go through `client.beta.messages.stream` (the fallback beta). With citations on, the model often makes the cited span a verbatim quote. The prompt line "State each fact once" stops it from paraphrasing a fact and then quoting it again.
 - Reject scanned PDFs without a text layer with a clear message (OCR is out of scope).
 - Embedding model (ADR-3): `EMBEDDING_MODEL` in `config.py` is part of the schema. Changing it requires four things together, and tests check the first two:
   1. update `ARG EMBEDDING_MODEL` in the Dockerfile;
@@ -85,7 +88,9 @@ Each step is one commit; tick it off in Status.
 - [x] 2 Sample corpus (2026-10-01): 4 PDFs (16 pages); 28 eval items (23 in scope including 6 cross-lingual, 4 out of scope, 1 injection); evidence quotes checked by tests
 - [x] 3 Ingestion (2026-10-01): upload/list/get/delete API, page-bound chunking, embeddinggemma-300m chosen by benchmark (ADR-3), migration 0001. 70 tests (7 integration on Postgres). In Docker the 4 sample PDFs ingest in 4 s → 22 chunks
 - [x] 4 Retrieval (2026-10-01): semantic ranking + exact-identifier boost (ADR-9; RRF measured worse); `GET /search`. Retrieval eval: R@1 0.92, R@8 1.00, MRR 0.94 over 25 questions. Only miss: `xl-uz-saturday-hours` at rank 6, an Uzbek-to-English embedding weakness
-- [ ] 5 Answering
+- [x] 5 Answering (2026-10-01): `POST /ask` (SSE or JSON) with page-level `search_result` citations, refusal fallback, safe error events, cost logging.
+  - Manual check with the real API: cancellation (EN) cites p. 2, implant price (RU) p. 3, Saturday hours (UZ) p. 1; braces (out of scope) gets "can't confirm"; "free this month" (injection) gets "No".
+  - About $0.022 per answer, roughly 4.1k input and 300 output tokens
 - [ ] 6 Web UI
 - [ ] 7 Evals
 - [ ] 8 README and video

@@ -3,15 +3,17 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 
 import anyio
+from anthropic import AsyncAnthropic
 from fastapi import FastAPI
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from docassist.api import documents, health, search
+from docassist.api import ask, documents, health, search
 from docassist.config import EMBEDDING_MODEL, Settings, get_settings
 from docassist.db.models import EMBEDDING_DIM
 from docassist.db.session import create_engine, create_session_factory
 from docassist.ingest.pipeline import fail_interrupted
+from docassist.llm.client import make_client
 from docassist.retrieval.embedder import Embedder, FastEmbedder
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,7 @@ def create_app(
     settings: Settings | None = None,
     engine_factory: Callable[[Settings], AsyncEngine] = create_engine,
     embedder_factory: Callable[[Settings], Embedder] = default_embedder,
+    llm_client_factory: Callable[[Settings], AsyncAnthropic | None] = make_client,
     recover_interrupted: bool = True,
 ) -> FastAPI:
     settings = settings or get_settings()
@@ -40,6 +43,9 @@ def create_app(
         app.state.engine = engine_factory(settings)
         app.state.session_factory = create_session_factory(app.state.engine)
         app.state.embedder = embedder_factory(settings)
+        app.state.llm_client = llm_client_factory(settings)
+        if app.state.llm_client is None:
+            logger.warning("No Anthropic API key: /ask will return an error event")
         if app.state.embedder.dim != EMBEDDING_DIM:
             raise RuntimeError(
                 f"Embedder dimension {app.state.embedder.dim} != database column {EMBEDDING_DIM}"
@@ -59,6 +65,8 @@ def create_app(
         try:
             yield
         finally:
+            if app.state.llm_client is not None:
+                await app.state.llm_client.close()
             await app.state.engine.dispose()
 
     app = FastAPI(title="AI Document Assistant", version="0.1.0", lifespan=lifespan)
@@ -66,6 +74,7 @@ def create_app(
     app.include_router(health.router)
     app.include_router(documents.router)
     app.include_router(search.router)
+    app.include_router(ask.router)
     return app
 
 

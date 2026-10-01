@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     # ANTHROPIC_BASE_URL (e.g. a local proxy) is never picked up.
     anthropic_base_url: str = "https://api.anthropic.com"
     model: str = "claude-opus-5-5"
+    answer_effort: str = "medium"  # low | medium | high | xhigh | max
+    answer_max_tokens: int = 8000  # covers adaptive thinking plus the answer
+    retrieval_k: int = 8
+    # Server-side retry on another model when the requested model declines (beta, ADR-7).
+    refusal_fallback: bool = True
+    anthropic_timeout_s: float = 120.0
 
     database_url: str = "postgresql+asyncpg://docassist:docassist@localhost:5432/docassist"
     db_connect_timeout_s: float = 5.0

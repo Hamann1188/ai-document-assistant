@@ -31,8 +31,7 @@ def chunk_pages(pages: list[str], max_words: int, overlap_words: int) -> list[Te
 
 
 def _chunk_page(text: str, max_words: int, overlap_words: int) -> list[str]:
-    sentences = [s for s in _split_sentences(text) if s.strip()]
-    units = [piece for s in sentences for piece in _split_long(s, max_words)]
+    units = [piece for s in split_sentences(text) for piece in _split_long(s, max_words)]
 
     chunks: list[str] = []
     current: list[str] = []
@@ -49,8 +48,9 @@ def _chunk_page(text: str, max_words: int, overlap_words: int) -> list[str]:
     return chunks
 
 
-def _split_sentences(text: str) -> list[str]:
-    return [" ".join(s.split()) for s in _SENTENCE_END.split(text.strip())]
+def split_sentences(text: str) -> list[str]:
+    """Sentences with whitespace collapsed; empty input gives no sentences."""
+    return [" ".join(s.split()) for s in _SENTENCE_END.split(text.strip()) if s.strip()]
 
 
 def _split_long(sentence: str, max_words: int) -> list[str]:
