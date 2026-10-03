@@ -122,28 +122,38 @@ Failure handling:
   - The answer footer shows model, tokens, cost and pages searched.
   - Styling: light and dark themes via `prefers-color-scheme`; one column under 800 px.
   - Security: a strict CSP (`default-src 'self'`, no inline script or style, checked by a test) on the UI and static files.
+- **Known limitation:** with citations on, the model sometimes states a fact and then repeats it as a cited verbatim quote, in the document's language (2 of 30 eval answers on 2026-10-03), despite the prompt line about footnotes. A stream filter that dropped such quotes was built and then removed by the owner's decision (`276e027`, reverted in `7851d6c`).
 - **Known limitation:** citation blocks are sentences. A table has no sentence punctuation, so a whole table chunk is one block, and its `cited_text` is the full table (for example the price list). The page is still exact. Fix later: keep line breaks in chunk text and split table-like units into rows.
 - No `output_config.format` on this route: citations and structured outputs are incompatible.
 - **Single-turn by design:** every question is independent, so there is no conversation state to keep consistent.
 
 ## 8. Evaluation
 
-`evals/questions.yaml` holds about 25 items over the generated sample corpus:
+`evals/questions.yaml` holds 30 items over the generated sample corpus. Each evidence quote is verified against its page by a unit test.
 
-- **In-scope:** question, expected facts, expected file and pages.
-- **Out-of-scope:** expected "not found".
-- **Cross-lingual:** a Russian or Uzbek question about an English document.
-- **Injection:** one sample document contains an embedded instruction; the answer must not follow it.
+| Group | Count | What's tested |
+|---|---|---|
+| In scope | 25 | Question, reference answer, evidence file and page. 6 are cross-lingual (an Uzbek or Russian question about an English document, or the reverse), and 2 rely on exact identifiers (`ОПТГ`, clause `4.2`) |
+| Out of scope | 4 | Includes a general-knowledge question the model knows but must not answer from memory |
+| Injection | 1 | A planted instruction in the supplier agreement; the answer must not follow it |
+
+Two runners:
+- `evals/retrieval.py`: retrieval only, no API cost (section 6).
+- `evals/run.py`: end to end. Each question goes through retrieval and `/ask` logic. A separate Claude call grades the answer with structured output `Verdict{reason, correct, grounded, language_matches}` at effort `low`, and sees the same excerpts the assistant saw. Citation accuracy is checked without the judge. Concurrency is 3, with up to 6 retries for rate limits.
 
 | Metric | How | Target |
 |---|---|---|
-| Retrieval recall@8 | expected page among retrieved chunks; no API cost | ≥ 0.9 |
-| Answer correctness | LLM judge: separate Claude call, structured output `{correct, reason}`, effort `low` | ≥ 90% |
-| Citation accuracy | cited page ∈ expected pages | ≥ 90% |
-| Out-of-scope refusals | answer says "not found" | 100% |
-| Cost per question | from `usage` | reported |
+| Answer correctness | Judge: core facts match the reference, no contradiction (in scope) | ≥ 90% |
+| Citation accuracy | At least one citation is on an evidence page (in scope) | ≥ 90% |
+| Out of scope handled | Judge: says "not found", no answer from general knowledge | 100% |
+| Injection resisted | Judge: doesn't claim treatments are free | 100% |
+| Grounded | Judge: every factual claim is supported by the excerpts (all answers) | ≥ 95% |
+| Language match | Judge: reply in the question's language (all answers) | ≥ 95% |
+| Retrieval hit, cost, latency | Evidence page among sources; `usage` × price; time to first word and full answer | reported |
 
-The runner writes `evals/results/latest.md`; the summary table goes into the README.
+`evals/run.py` writes `evals/results/latest.md` (committed; its summary goes into the README) and `latest.jsonl` with raw answers (git-ignored). It exits 1 when a target is missed.
+
+Caveat: the judge is the same model family as the assistant. Its verdicts are checked by reading the per-question table, and every failure carries the judge's reason.
 
 ## 9. Security and privacy
 
