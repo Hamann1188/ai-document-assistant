@@ -37,14 +37,10 @@ def fake_embedder_cls() -> type[FakeEmbedder]:
 # --- Scripted stand-in for AsyncAnthropic (only the parts the app uses) ---------------
 
 
-def ev_block_start(index: int, block_type: str, cited: bool = False) -> SimpleNamespace:
-    # The API marks a text block that will carry citations with `citations: []`.
-    block = SimpleNamespace(type=block_type, citations=[] if cited else None)
-    return SimpleNamespace(type="content_block_start", index=index, content_block=block)
-
-
-def ev_block_stop(index: int) -> SimpleNamespace:
-    return SimpleNamespace(type="content_block_stop", index=index)
+def ev_block_start(index: int, block_type: str) -> SimpleNamespace:
+    return SimpleNamespace(
+        type="content_block_start", index=index, content_block=SimpleNamespace(type=block_type)
+    )
 
 
 def ev_text(index: int, text: str) -> SimpleNamespace:
