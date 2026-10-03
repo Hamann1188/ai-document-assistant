@@ -39,7 +39,7 @@ tests/
 | Retrieval eval | `uv run python -m evals.retrieval`: real DB and model, no API key; ingests missing sample docs; exits 1 below the target |
 | UI smoke test (real browser + Claude, ~$0.06) | `uv run --with playwright python scripts/ui_smoke.py`. Needs the stack on :8000 with the sample PDFs; drives the installed Edge, no browser download; screenshots go to `.cache/ui-smoke/` |
 | Embedding benchmark | `uv run python -m evals.embedding_benchmark [model ...]` (downloads models into `.cache/`, no API key) |
-| Eval (real API, costs money) | `uv run python -m evals.run` |
+| Eval (real API, about $0.94) | `uv run python -m evals.run`: 30 questions plus judge; writes `evals/results/latest.md` (committed) and `latest.jsonl` (ignored); exits 1 if a target is missed. Ask the owner before running, it spends their balance |
 
 ## Repo rules
 
@@ -96,5 +96,8 @@ Each step is one commit; tick it off in Status.
 - [x] 6 Web UI (2026-10-01): documents panel (upload, drag and drop, status, delete), streaming chat with page-citation markers linking to `/documents/{id}/file#page=N`, Sources list, cost footer, dark theme, phone layout, strict CSP.
   - `scripts/ui_smoke.py` passed in Edge against Docker.
   - A prompt line saying "the interface shows citations as footnotes" stopped the paraphrase-then-quote duplication (3/3 runs) and cut output from ~300 to ~150 tokens, about $0.019 per answer
-- [ ] 7 Evals
+- [x] 7 Evals (2026-10-03): `evals/run.py` (judge: Claude structured output, effort low). 30/30 met every target, 100% on all six metrics:
+  - correctness 25/25, citations 25/25, out of scope 4/4, injection 1/1, grounded 30/30, language 30/30.
+  - $0.020 per answer, median 1.6 s to first word and 3.3 s to the full answer. A run costs about $0.94.
+  - I checked the judge's verdicts by reading the answers.
 - [ ] 8 README and video
