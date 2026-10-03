@@ -45,24 +45,24 @@ Measured by the end-to-end eval in [`evals/run.py`](evals/run.py) over 30 questi
 - **Clean web UI** with light and dark themes and a phone layout. No build step, no external scripts, strict Content Security Policy.
 - **REST API** with interactive docs at `/docs`.
 
-| | |
-|---|---|
-| ![Says when the documents don't contain the answer](docs/images/not-in-documents-dark.png) | Asked about something the documents don't cover, the assistant says so, shows what the documents *do* say and suggests whom to contact. |
+Asked about something the documents don't cover, the assistant says so, shows what the documents *do* say and suggests whom to contact (dark theme):
+
+![Says when the documents don't contain the answer](docs/images/not-in-documents-dark.png)
 
 ## How it works
 
 ```mermaid
-flowchart LR
-  subgraph Ingestion
-    P["PDF upload"] --> X["Text per page"]
-    X --> C["Chunks that never cross a page"]
-    C --> E["Local embeddings<br/>embeddinggemma-300m"]
+flowchart TB
+  subgraph ingest ["Upload"]
+    direction LR
+    P["PDF"] --> X["Text per page"] --> C["Chunks within one page"] --> E["Local embeddings"]
   end
   E --> DB[("PostgreSQL + pgvector")]
-  Q["Question"] --> S["Semantic search<br/>+ exact-code boost"]
+  subgraph answer ["Question"]
+    direction LR
+    Q["Question"] --> S["Semantic search +<br/>exact-code boost"] --> CL["Claude: pages as<br/>search results"] --> UI["Streamed answer,<br/>page footnotes"]
+  end
   DB --> S
-  S --> CL["Claude Opus 5.5<br/>pages as search results,<br/>citations on"]
-  CL -- "streamed text + citations" --> UI["Web UI:<br/>footnotes open the PDF page"]
 ```
 
 1. **Ingestion.** Text is extracted page by page, repeated headers and footers are removed, and the text is split into sentence-aligned chunks of up to 120 words. A chunk never spans two pages, so every citation points to a single page. Embeddings are computed locally with an open model, so no embeddings API is needed.
