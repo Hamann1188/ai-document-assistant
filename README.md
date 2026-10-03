@@ -52,17 +52,10 @@ Asked about something the documents don't cover, the assistant says so, shows wh
 ## How it works
 
 ```mermaid
-flowchart TB
-  subgraph ingest ["Upload"]
-    direction LR
-    P["PDF"] --> X["Text per page"] --> C["Chunks within one page"] --> E["Local embeddings"]
-  end
-  E --> DB[("PostgreSQL + pgvector")]
-  subgraph answer ["Question"]
-    direction LR
-    Q["Question"] --> S["Semantic search +<br/>exact-code boost"] --> CL["Claude: pages as<br/>search results"] --> UI["Streamed answer,<br/>page footnotes"]
-  end
-  DB --> S
+flowchart LR
+  P["PDF upload"] --> I["Extract text,<br/>chunk by page,<br/>embed locally"] --> DB[("PostgreSQL<br/>+ pgvector")]
+  Q["Question"] --> S["Semantic search<br/>+ exact codes"]
+  DB --> S --> CL["Claude with<br/>citations"] --> UI["Streamed answer<br/>with page links"]
 ```
 
 1. **Ingestion.** Text is extracted page by page, repeated headers and footers are removed, and the text is split into sentence-aligned chunks of up to 120 words. A chunk never spans two pages, so every citation points to a single page. Embeddings are computed locally with an open model, so no embeddings API is needed.
