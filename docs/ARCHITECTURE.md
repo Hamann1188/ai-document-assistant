@@ -22,7 +22,7 @@ flowchart LR
   U -- question --> API
   API -- background task --> ING[Ingestion: pypdf → page-aware chunker → embedder]
   ING --> DB[(PostgreSQL 17 + pgvector)]
-  API -- hybrid search --> DB
+  API -- semantic search + identifier boost --> DB
   API -- search_result blocks + citations --> C[Claude API]
   C -- streamed text + citations --> API
   API -- SSE --> U
