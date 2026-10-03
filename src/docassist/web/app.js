@@ -304,7 +304,10 @@ class AnswerView {
     const text = [...this.blocks.entries()]
       .sort(([a], [b]) => a - b)
       .map(([, block]) => block.text + markers(block.numbers))
-      .join("");
+      .join("")
+      // A quote the server dropped as a restatement leaves only its marker, after the
+      // previous sentence's trailing space: pull the marker up to the punctuation.
+      .replace(new RegExp(`(\\s+)(${CITE_OPEN}[\\d,]+${CITE_CLOSE})`, "g"), "$2$1");
     const html = renderMarkdown(escapeHtml(text)).replace(
       new RegExp(`${CITE_OPEN}([\\d,]+)${CITE_CLOSE}`, "g"),
       (_, list) => list.split(",").map((n) => this.citeLink(Number(n))).join(""),

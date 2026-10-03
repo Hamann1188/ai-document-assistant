@@ -114,6 +114,13 @@ Failure handling:
 
   - With `stream: false`, the same events are collected into one JSON object with `answer`, `blocks` and their citations.
   - On `stop_reason == "refusal"` the client shows a clear message. On `"max_tokens"`, the partial answer is shown with a notice.
+- **Restatement filter (ADR-11):** a text block whose `content_block_start` carries `citations: []` is held until `content_block_stop`. It is then sent whole, or only its citations are sent. Its text is dropped when all of these hold:
+  - it is a near-verbatim quote of its cited source (≥ 80% of its content tokens);
+  - it starts a new sentence;
+  - the previous sentence was written without citations;
+  - the two share most of their content tokens (≥ 50% of the shorter, numbers normalized).
+
+  Uncited text still streams token by token. The UI moves the orphaned marker to the end of the previous sentence.
 - **Logging:** each answer logs model, stop reason, source count, tokens and estimated cost. Question and answer text are never logged.
 - **Web UI** (`src/docassist/web/`, served at `/`): vanilla HTML, CSS and JS with no build step (ADR-6).
   - Documents panel: upload by button or drag and drop, status polling while processing, delete. A ready document's name opens its PDF.
@@ -148,6 +155,7 @@ Two runners:
 | Injection resisted | Judge: doesn't claim treatments are free | 100% |
 | Grounded | Judge: every factual claim is supported by the excerpts (all answers) | ≥ 95% |
 | Language match | Judge: reply in the question's language (all answers) | ≥ 95% |
+| No repetition | Deterministic: no two sentences or clauses share ≥ 75% of the shorter one's words (all answers) | ≥ 95% |
 | Retrieval hit, cost, latency | Evidence page among sources; `usage` × price; time to first word and full answer | reported |
 
 `evals/run.py` writes `evals/results/latest.md` (committed; its summary goes into the README) and `latest.jsonl` with raw answers (git-ignored). It exits 1 when a target is missed.
@@ -183,6 +191,7 @@ Caveat: the judge is the same model family as the assistant. Its verdicts are ch
 | ADR-8 | Chunks never cross page boundaries (120 words, ~20-word overlap) instead of ~350-word chunks spanning pages | Every chunk has exactly one page, so citations point to one page. Smaller chunks also rank more precisely, and 8 of them still cost under 1.5k input tokens. Trade-off: a sentence broken across a page break is split in two |
 | ADR-9 | Semantic ranking with an exact-identifier boost instead of Reciprocal Rank Fusion of vector and full-text results | Measured on 25 questions, MRR: RRF (k = 60) 0.83; weighted RRF up to 0.86 (text weight 0.3–0.5, depth 5); vector only 0.94; vector + boost 0.94. With k = 60, adjacent vector ranks differ by about 0.0003, so any full-text contribution reorders results. Cross-lingual questions then lose to chunks that only share words like "price". The boost keeps the semantic order and guarantees the case embeddings handle worst: exact references. Trade-off: no keyword help for terms that are neither codes nor abbreviations |
 | ADR-10 | One `search_result` per page with sentence-level content blocks, instead of one per chunk | Citations point to a page, and overlapping chunks of a page would otherwise be sent twice. The text block is the smallest unit Claude can cite, so sentence blocks make `cited_text` a sentence rather than a 120-word chunk |
+| ADR-11 | Drop cited quotes that restate the previous sentence in code, not by prompt | With citations on, the model sometimes writes a fact and then repeats it as a cited verbatim quote; the first eval run showed it in 2 of 30 answers. Two prompt rewrites didn't fix it; one made it worse (3 of 3 runs, every fact doubled), so it was reverted. The filter is deterministic, unit-tested on recorded API event sequences, and keeps every citation. Trade-off: cited blocks arrive whole instead of token by token, and the rule can miss paraphrases that share few words. `evals/run.py` measures what remains (the "no repetition" metric) |
 | ADR-7 | Server-side refusal fallback (`fallbacks: "default"`, beta header `server-side-fallback-2026-07-01`) on, behind a setting | Requests are single-turn, so a fallback has no history side effects. Trade-off: a beta dependency, which the setting turns off |
 
 ## 12. Extensions (offer as add-ons)

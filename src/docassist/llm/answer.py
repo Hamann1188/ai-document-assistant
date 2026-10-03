@@ -9,6 +9,7 @@ from anthropic import AsyncAnthropic, omit
 
 from docassist.config import Settings
 from docassist.llm.prompt import SYSTEM_PROMPT, Source, build_user_content
+from docassist.llm.restatement import is_restatement, last_sentence_span
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,10 @@ async def stream_answer(
     """Yield answer events. Event `type`s:
 
     - sources: the pages sent to Claude (always first)
-    - text: {block, text}: a piece of answer text block `block`
+    - text: {block, text}: a piece of answer text block `block`. Uncited text
+      streams as it arrives; a cited block is sent whole when it completes, and
+      its text is dropped when it only restates the previous sentence (see
+      llm/restatement.py)
     - citation: {block, source, document_id, filename, page, cited_text}
     - reset: the requested model declined and a fallback model starts over;
       discard text and citations received so far
@@ -72,6 +76,7 @@ async def stream_answer(
         return
 
     use_fallback = settings.refusal_fallback
+    output = _AnswerText()
     try:
         async with client.beta.messages.stream(
             model=settings.model,
@@ -83,17 +88,28 @@ async def stream_answer(
             fallbacks="default" if use_fallback else omit,
         ) as stream:
             async for event in stream:
-                if event.type == "content_block_start" and event.content_block.type == "fallback":
-                    yield {"type": "reset"}
+                if event.type == "content_block_start":
+                    block = event.content_block
+                    if block.type == "fallback":
+                        output = _AnswerText()
+                        yield {"type": "reset"}
+                    elif block.type == "text" and getattr(block, "citations", None) is not None:
+                        output.hold(event.index)  # a cited block: decide when complete
                 elif event.type == "content_block_delta":
                     delta = event.delta
                     if delta.type == "text_delta":
-                        yield {"type": "text", "block": event.index, "text": delta.text}
+                        if output.add_text(event.index, delta.text):
+                            yield {"type": "text", "block": event.index, "text": delta.text}
                     elif delta.type == "citations_delta":
                         citation = _map_citation(delta.citation, sources)
-                        if citation is not None:
+                        if citation is not None and output.add_citation(event.index, citation):
                             yield {"type": "citation", "block": event.index, **citation}
+                elif event.type == "content_block_stop":
+                    for item in output.release(event.index):
+                        yield item
             message = await stream.get_final_message()
+        for item in output.release_all():
+            yield item
     except anthropic.AuthenticationError:
         logger.error("Claude API rejected the API key")
         yield {"type": "error", "message": BAD_KEY}
@@ -125,6 +141,62 @@ async def stream_answer(
         "usage": usage,
         "cost_usd": cost,
     }
+
+
+class _AnswerText:
+    """The answer text sent so far, plus cited blocks held back until complete."""
+
+    def __init__(self) -> None:
+        self.segments: list[tuple[str, bool]] = []  # (text, from a cited block)
+        self.held: dict[int, dict] = {}
+
+    def hold(self, index: int) -> None:
+        self.held[index] = {"text": "", "citations": []}
+
+    def add_text(self, index: int, text: str) -> bool:
+        """Record text; True if it should be sent now."""
+        if index in self.held:
+            self.held[index]["text"] += text
+            return False
+        self.segments.append((text, False))
+        return True
+
+    def add_citation(self, index: int, citation: dict) -> bool:
+        if index in self.held:
+            self.held[index]["citations"].append(citation)
+            return False
+        return True
+
+    def release(self, index: int) -> list[dict]:
+        block = self.held.pop(index, None)
+        if block is None:
+            return []
+        events = [{"type": "citation", "block": index, **c} for c in block["citations"]]
+        if self._restates_previous_sentence(block):
+            logger.info("Dropped a cited quote that restated the previous sentence")
+        elif block["text"]:
+            self.segments.append((block["text"], bool(block["citations"])))
+            events.append({"type": "text", "block": index, "text": block["text"]})
+        return events
+
+    def release_all(self) -> list[dict]:
+        return [event for index in sorted(self.held) for event in self.release(index)]
+
+    def _restates_previous_sentence(self, block: dict) -> bool:
+        if not block["citations"]:
+            return False
+        text = "".join(segment for segment, _ in self.segments)
+        span = last_sentence_span(text)
+        if span is None:
+            return False
+        start, end = span
+        offset = 0
+        for segment, cited in self.segments:  # a cited sentence isn't a paraphrase
+            if cited and offset < end and offset + len(segment) > start:
+                return False
+            offset += len(segment)
+        cited_texts = [c["cited_text"] for c in block["citations"]]
+        return is_restatement(block["text"], cited_texts, text[start:end])
 
 
 def _map_citation(citation, sources: Sequence[Source]) -> dict | None:

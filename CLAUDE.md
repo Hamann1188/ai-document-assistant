@@ -51,7 +51,11 @@ tests/
   - `FakeClaude` and the event builders (`ev_text`, `ev_cite`, `ev_block_start`, `final_message`) live in `tests/conftest.py`; the app takes `llm_client_factory` for injection.
   - Async tests run under pytest-asyncio in auto mode.
 - Web UI: no inline `<script>`, `<style>` or `style=` in HTML, because the CSP blocks them and `tests/test_web.py` checks. Setting `element.style` from JS is fine. Escape every server- or model-provided string with `escapeHtml` before inserting it into HTML.
-- Claude answers: requests go through `client.beta.messages.stream` (the fallback beta). With citations on, the model often makes the cited span a verbatim quote. The prompt line "State each fact once" stops it from paraphrasing a fact and then quoting it again.
+- Claude answers: requests go through `client.beta.messages.stream` (the fallback beta).
+  - With citations on, the model often makes the cited span a verbatim quote, sometimes right after paraphrasing the same fact.
+  - Prompting only partly helps. The prompt line about footnotes stays, but a stronger rewrite with an example made it worse and was reverted.
+  - `llm/restatement.py` (ADR-11) drops such quotes deterministically. Don't remove it in favour of prompt tweaks without re-running the eval's "no repetition" metric.
+- `uv run python -m evals.run --report-only` re-scores `latest.jsonl` with the deterministic checks. It is free; use it after changing those checks.
 - Reject scanned PDFs without a text layer with a clear message (OCR is out of scope).
 - Embedding model (ADR-3): `EMBEDDING_MODEL` in `config.py` is part of the schema. Changing it requires four things together, and tests check the first two:
   1. update `ARG EMBEDDING_MODEL` in the Dockerfile;
@@ -96,8 +100,9 @@ Each step is one commit; tick it off in Status.
 - [x] 6 Web UI (2026-10-01): documents panel (upload, drag and drop, status, delete), streaming chat with page-citation markers linking to `/documents/{id}/file#page=N`, Sources list, cost footer, dark theme, phone layout, strict CSP.
   - `scripts/ui_smoke.py` passed in Edge against Docker.
   - A prompt line saying "the interface shows citations as footnotes" stopped the paraphrase-then-quote duplication (3/3 runs) and cut output from ~300 to ~150 tokens, about $0.019 per answer
-- [x] 7 Evals (2026-10-03): `evals/run.py` (judge: Claude structured output, effort low). 30/30 met every target, 100% on all six metrics:
-  - correctness 25/25, citations 25/25, out of scope 4/4, injection 1/1, grounded 30/30, language 30/30.
-  - $0.020 per answer, median 1.6 s to first word and 3.3 s to the full answer. A run costs about $0.94.
-  - I checked the judge's verdicts by reading the answers.
+- [x] 7 Evals (2026-10-03): `evals/run.py` (judge: Claude structured output, effort low, plus deterministic checks).
+  - Final run: 30/30, 100% on all seven metrics (correctness 25/25, citations 25/25, out of scope 4/4, injection 1/1, grounded, language, no repetition 30/30).
+  - $0.021 per answer, median 1.6 s to first word and 3.3 s to the full answer. A run costs about $0.94.
+  - The first run caught paraphrase-then-quote repeats in 2 of 30 answers. They were fixed in code (ADR-11), not by prompt.
+  - I read the answers to check the judge's verdicts. The step cost about $2.1 in total, two full runs included.
 - [ ] 8 README and video
