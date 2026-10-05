@@ -101,6 +101,6 @@ Each step is one commit; tick it off in Status.
   - $0.020 per answer, median 1.5 s to first word and 3.5 s to the full answer; the run cost $0.94.
   - I read every answer and agree with the judge.
   - Not measured by the judge: 2/30 answers (`crown-warranty`, `price-implant`) restate a fact and then repeat it as a cited verbatim quote, in `price-implant` an English quote inside a Russian answer. The owner chose to drop the filter that fixed this (`276e027`, reverted in `7851d6c`). See ARCHITECTURE §7, known limitations.
-- [ ] 8 README and video
+- [x] 8 README and video
   - [x] README (2026-10-03). Screenshots in `docs/images/` come from `scripts/ui_smoke.py` (`2-answers.png`, `3-dark-out-of-scope.png`).
-  - [ ] Demo video: the owner records it from the script in `../demo-videos/ai-document-assistant.md`, then a link goes under the README intro.
+  - [x] Demo video (2026-10-05). The owner recorded it from `../demo-videos/ai-document-assistant.md` with the local AI voice-over (`../demo-videos/voiceover.py`). It is on YouTube, unlisted: https://youtu.be/_Fm6nDbT6S0, and linked under the README intro as a clickable thumbnail.

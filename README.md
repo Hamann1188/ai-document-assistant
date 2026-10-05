@@ -5,6 +5,10 @@
 
 **Chat with your company's PDFs.** Ask in English, Russian or Uzbek. Every answer cites the file and page it comes from, and when the documents don't cover a question, the assistant says so instead of guessing.
 
+**▶ Watch the 90-second demo:**
+
+[![Demo video: uploading PDFs, answers with page citations in English and Uzbek, a question the documents don't cover](https://img.youtube.com/vi/_Fm6nDbT6S0/maxresdefault.jpg)](https://youtu.be/_Fm6nDbT6S0)
+
 ![Answers with page citations](docs/images/answers.png)
 
 ## The problem
